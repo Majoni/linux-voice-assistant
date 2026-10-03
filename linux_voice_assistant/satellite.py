@@ -979,51 +979,59 @@ class VoiceSatelliteProtocol(APIServer):
             _LOGGER.debug("TTS response stopped manually")
 
     # ------------------------------------------------------------------
-    # TTS
-    # ------------------------------------------------------------------
+  # TTS
+# ------------------------------------------------------------------
 
-    def play_tts(self) -> None:
-        if (not self._tts_url) or self._tts_played:
-            return
+def play_tts(self) -> None:
+    if (not self._tts_url) or self._tts_played:
+        return
 
-        self._tts_played = True
-        _LOGGER.debug("Playing TTS response: %s", self._tts_url)
+    self._tts_played = True
+    _LOGGER.debug("TTS local disabled, skipping playback: %s", self._tts_url)
 
-        self.state.active_wake_words.add(self.state.stop_word.id)
-        self._emit(LVAEvent.TTS_SPEAKING)
-        self.state.tts_player.play(self._tts_url, done_callback=self._tts_finished)
+    self.state.active_wake_words.add(self.state.stop_word.id)
+    self._emit(LVAEvent.TTS_SPEAKING)
 
-    def _tts_finished(self) -> None:
-        self._pipeline_active = False
-        self.state.active_wake_words.discard(self.state.stop_word.id)
-        self.send_messages([VoiceAssistantAnnounceFinished()])
-        self._emit(LVAEvent.TTS_FINISHED)
+    # KITT: response is played externally through the Echo
+    self._tts_finished()
 
-        if self._continue_conversation:
-            self._continue_conversation = False
-            # Keep pipeline active during the settle delay so the mic stays closed
-            # and does not capture the tail end of the TTS audio from the speaker.
-            self._pipeline_active = True
-            self._emit(LVAEvent.LISTENING)
-            _LOGGER.debug("Continuing conversation after %.2fs settle delay", self.state.continue_conversation_delay)
+def _tts_finished(self) -> None:
+    self._pipeline_active = False
+    self.state.active_wake_words.discard(self.state.stop_word.id)
+    self.send_messages([VoiceAssistantAnnounceFinished()])
+    self._emit(LVAEvent.TTS_FINISHED)
 
-            def _start_continued_conversation() -> None:
-                if self.state.muted:
-                    _LOGGER.debug("Skipping continued conversation: muted")
-                    self._pipeline_active = False
-                    self.unduck()
-                    return
-                self.send_messages([VoiceAssistantRequest(start=True)])
-                self._is_streaming_audio = True
-                _LOGGER.debug("Continued conversation started")
+    if self._continue_conversation:
+        self._continue_conversation = False
+        # Keep pipeline active during the settle delay so the mic stays closed
+        # and does not capture the tail end of the TTS audio from the speaker.
+        self._pipeline_active = True
+        self._emit(LVAEvent.LISTENING)
+        _LOGGER.debug(
+            "Continuing conversation after %.2fs settle delay",
+            self.state.continue_conversation_delay,
+        )
 
-            threading.Timer(self.state.continue_conversation_delay, _start_continued_conversation).start()
-        else:
-            self._continue_conversation = False
-            self.unduck()
-            self._emit(LVAEvent.IDLE)
+        def _start_continued_conversation() -> None:
+            if self.state.muted:
+                _LOGGER.debug("Skipping continued conversation: muted")
+                self._pipeline_active = False
+                self.unduck()
+                return
+            self.send_messages([VoiceAssistantRequest(start=True)])
+            self._is_streaming_audio = True
+            _LOGGER.debug("Continued conversation started")
 
-        _LOGGER.debug("TTS response finished")
+        threading.Timer(
+            self.state.continue_conversation_delay,
+            _start_continued_conversation,
+        ).start()
+    else:
+        self._continue_conversation = False
+        self.unduck()
+        self._emit(LVAEvent.IDLE)
+
+    _LOGGER.debug("TTS response finished")
 
     # ------------------------------------------------------------------
     # Ducking
