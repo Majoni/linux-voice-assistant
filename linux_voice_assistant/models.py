@@ -53,15 +53,20 @@ class AvailableWakeWord:
 
             return MicroWakeWord.from_config(config_path=self.wake_word_path)
 
-        if self.type == WakeWordType.OPEN_WAKE_WORD:
-            from pyopen_wakeword import OpenWakeWord
+ if self.type == WakeWordType.OPEN_WAKE_WORD:
+    from pyopen_wakeword import OpenWakeWord
 
-            oww_model = OpenWakeWord.from_model(model_path=self.wake_word_path)
-            setattr(oww_model, "wake_word", self.wake_word)
+    oww_model = OpenWakeWord.from_model(model_path=self.wake_word_path)
 
-            return oww_model
+    # pyopenwakeword derives .id from the model filename, but callers
+    # match against the manifest id this was loaded under.
+    setattr(oww_model, "id", self.id)
 
-        raise ValueError(f"Unexpected wake word type: {self.type}")
+    setattr(oww_model, "wake_word", self.wake_word)
+
+    return oww_model
+
+raise ValueError(f"Unexpected wake word type: {self.type}")
 
 
 @dataclass
