@@ -37,7 +37,6 @@ class WakeWordType(str, Enum):
     MICRO_WAKE_WORD = "micro"
     OPEN_WAKE_WORD = "openWakeWord"
 
-
 @dataclass
 class AvailableWakeWord:
     id: str
@@ -53,22 +52,21 @@ class AvailableWakeWord:
 
             return MicroWakeWord.from_config(config_path=self.wake_word_path)
 
- if self.type == WakeWordType.OPEN_WAKE_WORD:
-    from pyopen_wakeword import OpenWakeWord
+        if self.type == WakeWordType.OPEN_WAKE_WORD:
+            from pyopen_wakeword import OpenWakeWord
 
-    oww_model = OpenWakeWord.from_model(model_path=self.wake_word_path)
+            oww_model = OpenWakeWord.from_model(model_path=self.wake_word_path)
 
-    # pyopenwakeword derives .id from the model filename, but callers
-    # match against the manifest id this was loaded under.
-    setattr(oww_model, "id", self.id)
+            # pyopenwakeword derives .id from the model filename, but callers
+            # match against the manifest id this was loaded under.
+            setattr(oww_model, "id", self.id)
 
-    setattr(oww_model, "wake_word", self.wake_word)
+            setattr(oww_model, "wake_word", self.wake_word)
 
-    return oww_model
+            return oww_model
 
-raise ValueError(f"Unexpected wake word type: {self.type}")
-
-
+        raise ValueError(f"Unexpected wake word type: {self.type}")
+        
 @dataclass
 class LightRegistration:
     """Capabilities a peripheral declares for one of its Light entities.
